@@ -18,8 +18,8 @@ def create_update_knowledge_tool(knowledge: Knowledge):
         (unexpected NULLs, type quirks, useful join patterns).
 
         Args:
-            title: Short identifier (e.g., "Schema: dash.monthly_mrr",
-                   "Discovery: annual billing discount").
+            title: Short identifier (e.g., "Schema: dash.mall_store_counts",
+                   "Discovery: stores.mall_id joins malls.id").
             content: What was created/changed and how to use it.
                      Include column names, types, and example queries.
         """

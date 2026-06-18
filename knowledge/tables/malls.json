@@ -1,0 +1,33 @@
+{
+  "table_name": "malls",
+  "table_description": "导入到 public.malls 的商场级参考数据。将其作为购物中心、商场或物业分析的主要维度表。",
+  "use_cases": [
+    "列出并刻画数据集中可用的商场",
+    "当 stores 中存在商场标识符时，按商场对店铺分组",
+    "在 dash schema 中创建商场级汇总",
+    "回答关于商场覆盖、属性和分布的问题"
+  ],
+  "data_quality_notes": [
+    "更新于 2026-06-16。",
+    "id 在全部 30,494 个已导入商场中唯一。",
+    "对于全部 404,799 个已导入店铺，stores.mall_id 都关联到 malls.id。",
+    "当源数据没有开业日期时，open_date 可能为 NULL。",
+    "当源数据没有商场面积值时，area 可能为 NULL。",
+    "保持 public.malls 只读。基于源数据加工出来的表和视图应放在 dash schema 中。"
+  ],
+  "table_columns": [
+    {"name": "id", "type": "TEXT", "description": "唯一商场标识符。stores.mall_id 的关联键。"},
+    {"name": "name", "type": "TEXT", "description": "商场或购物中心名称。"},
+    {"name": "district", "type": "TEXT", "description": "商场所在区县级位置。"},
+    {"name": "city", "type": "TEXT", "description": "商场所在城市。"},
+    {"name": "province", "type": "TEXT", "description": "省级位置。"},
+    {"name": "address", "type": "TEXT", "description": "商场街道地址。"},
+    {"name": "open_date", "type": "TIMESTAMP", "description": "可用时表示开业日期/时间。"},
+    {"name": "开发商集团", "type": "TEXT", "description": "源数据中的开发商或持有集团。"},
+    {"name": "商场定位", "type": "TEXT", "description": "商场定位。"},
+    {"name": "商场评级", "type": "TEXT", "description": "商场评级（可能为空，表示该商场无评级）。"},
+    {"name": "商圈", "type": "TEXT", "description": "商场所在商圈。"},
+    {"name": "商圈评级", "type": "TEXT", "description": "商圈评级。"},
+    {"name": "area", "type": "DOUBLE PRECISION", "description": "源数据中的商场面积。"}
+  ]
+}

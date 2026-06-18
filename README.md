@@ -16,8 +16,7 @@ cp example.env .env
 # Start the system
 docker compose up -d --build
 
-# Generate sample data and load knowledge
-docker exec -it dash-api python scripts/generate_data.py
+# Load knowledge after `public.malls` and `public.stores` exist
 docker exec -it dash-api python scripts/load_knowledge.py
 ```
 
@@ -29,12 +28,12 @@ Confirm Dash is running at [http://localhost:8000/docs](http://localhost:8000/do
 2. Add OS → Local → `http://localhost:8000`
 3. Click "Connect"
 
-**Try it** (SaaS metrics dataset):
+**Try it** (mall and store dataset):
 
-- What's our current MRR?
-- Which plan has the highest churn rate?
-- Show me revenue trends by plan over the last 6 months
-- Which customers are at risk of churning?
+- How many malls do we have by city?
+- Which malls have the most stores?
+- Break down stores by category
+- Create a view for store counts by mall
 
 ## Deploy to Railway
 
@@ -85,8 +84,7 @@ Database scripts must run inside Railway's network (the internal hostname `pgvec
 
 ```sh
 railway ssh --service dash
-# Inside the container:
-python scripts/generate_data.py
+# Inside the container, after loading source tables:
 python scripts/load_knowledge.py
 ```
 
@@ -194,7 +192,7 @@ Two complementary systems:
 | `public` | Company (loaded externally) | Read-only — never modified by agents |
 | `dash` | Engineer agent | Views, summary tables, computed data |
 
-The Engineer builds reusable data assets (`dash.monthly_mrr`, `dash.customer_health_score`, `dash.churn_risk`) and records them to knowledge. The Analyst discovers and prefers these views over raw table queries.
+The Engineer builds reusable data assets (`dash.mall_store_counts`, `dash.city_store_density`, `dash.category_distribution`) and records them to knowledge. The Analyst discovers and prefers these views over raw table queries.
 
 ### 3. Security Engineering
 
@@ -222,18 +220,26 @@ Quick setup:
 
 Each Slack thread maps to one Dash session. For the manifest, ngrok commands, Railway deployment, permissions, and troubleshooting, see [docs/SLACK_CONNECT.md](docs/SLACK_CONNECT.md).
 
-## Data Model (SaaS Metrics)
+## Data Model (Malls and Stores)
 
-Synthetic B2B SaaS dataset (~900 customers, 2 years of data):
+Dash expects mall and store source data in the read-only `public` schema:
 
 | Table | Description |
 |-------|-------------|
-| `customers` | Company info, industry, size, acquisition source, status |
-| `subscriptions` | Plan, MRR, seats, billing cycle, lifecycle status |
-| `plan_changes` | Upgrades, downgrades, cancellations with MRR impact |
-| `invoices` | Billing records, payment status, billing periods |
-| `usage_metrics` | Daily API calls, active users, storage, reports |
-| `support_tickets` | Priority, category, resolution time, satisfaction |
+| `malls` | Mall-level reference data: name, district, city, province, address, opening date, developer group, positioning, rating, trade area, and area |
+| `stores` | Store-level tenant data: SKU, brand names, category names, mall relationship, and floor |
+
+Key relationship:
+
+```sql
+public.stores.mall_id = public.malls.id
+```
+
+Known imported dataset shape:
+
+- `public.malls`: 30,494 mall records
+- `public.stores`: 404,799 store records
+- Every imported store has `mall_id` populated and linked to `malls.id`
 
 ## Adding Knowledge
 
@@ -250,13 +256,13 @@ knowledge/
 
 ```json
 {
-  "table_name": "customers",
-  "table_description": "B2B SaaS customer accounts with company info and lifecycle status",
-  "use_cases": ["Churn analysis", "Cohort segmentation", "Acquisition reporting"],
+  "table_name": "malls",
+  "table_description": "Mall-level reference data loaded into public.malls",
+  "use_cases": ["Mall coverage analysis", "City rollups", "Store count summaries"],
   "data_quality_notes": [
-    "signup_date is DATE (not TIMESTAMP) — no time component",
-    "status values: active, churned, trial",
-    "company_size is self-reported"
+    "id is unique and is the join target for stores.mall_id",
+    "open_date can be NULL when the source does not provide an opening date",
+    "derived views and tables belong in the dash schema"
   ]
 }
 ```
@@ -264,16 +270,20 @@ knowledge/
 ### Query Patterns
 
 ```sql
--- <query monthly_mrr>
--- <description>Monthly MRR from active subscriptions</description>
+-- <query top_malls_by_store_count>
+-- <description>Top malls by imported store count</description>
 -- <query>
 SELECT
-    DATE_TRUNC('month', started_at) AS month,
-    SUM(mrr) AS total_mrr
-FROM subscriptions
-WHERE ended_at IS NULL
-GROUP BY 1
-ORDER BY 1 DESC
+    m.id AS mall_id,
+    m.name AS mall_name,
+    m.city,
+    m.province,
+    COUNT(*) AS store_count
+FROM public.stores s
+JOIN public.malls m ON m.id = s.mall_id
+GROUP BY m.id, m.name, m.city, m.province
+ORDER BY store_count DESC
+LIMIT 20;
 -- </query>
 ```
 
@@ -283,14 +293,14 @@ ORDER BY 1 DESC
 {
   "metrics": [
     {
-      "name": "MRR",
-      "definition": "Sum of active subscriptions excluding trials"
+      "name": "Store count by mall",
+      "definition": "Count stores grouped by their linked mall"
     }
   ],
   "common_gotchas": [
     {
-      "issue": "Active subscription detection",
-      "solution": "Filter on ended_at IS NULL, not status column"
+      "issue": "Join key direction",
+      "solution": "Join stores to malls with stores.mall_id = malls.id, not stores.id = malls.id"
     }
   ]
 }
@@ -326,7 +336,7 @@ python -m evals --verbose            # Show response details
 ```sh
 ./scripts/venv_setup.sh && source .venv/bin/activate
 docker compose up -d dash-db
-python scripts/generate_data.py
+# Load or copy `public.malls` and `public.stores` before this step
 python scripts/load_knowledge.py
 python -m dash            # CLI mode
 python -m app.main        # AgentOS mode (web UI at os.agno.com)

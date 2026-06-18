@@ -1,0 +1,28 @@
+{
+  "table_name": "stores",
+  "table_description": "导入到 public.stores 的店铺级数据。将其作为租户、零售单元、品牌或店铺分析的主要事实/明细表。",
+  "use_cases": [
+    "统计店铺数量并检查店铺覆盖情况",
+    "当存在商场关系列时，按商场分析店铺",
+    "在字段存在时，刻画店铺属性，例如品类、品牌、楼层或状态",
+    "为店铺和商场汇总创建可复用的 dash schema 视图"
+  ],
+  "data_quality_notes": [
+    "更新于 2026-06-16。",
+    "id 在全部 404,799 个已导入店铺中唯一。",
+    "全部已导入店铺均填充 mall_id，并关联到 malls.id。",
+    "category 是英文品类，category_cn 是中文品类。",
+    "brand_name 是英文品牌名，brand_name_cn 是中文品牌名。",
+    "保持 public.stores 只读。基于源数据加工出来的表和视图应放在 dash schema 中。"
+  ],
+  "table_columns": [
+    {"name": "id", "type": "TEXT", "description": "唯一店铺记录标识符。"},
+    {"name": "sku", "type": "TEXT", "description": "源数据中的品牌或店铺 SKU/分组标识符。"},
+    {"name": "brand_name", "type": "TEXT", "description": "英文或罗马化品牌名。"},
+    {"name": "brand_name_cn", "type": "TEXT", "description": "中文品牌名。"},
+    {"name": "category_cn", "type": "TEXT", "description": "中文零售品类。"},
+    {"name": "category", "type": "TEXT", "description": "英文零售品类。"},
+    {"name": "mall_id", "type": "TEXT", "description": "关联到 malls.id 的外键式标识符。"},
+    {"name": "floor", "type": "TEXT", "description": "商场内的楼层标签。"}
+  ]
+}

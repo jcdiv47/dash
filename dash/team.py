@@ -73,10 +73,10 @@ dash = Team(
 if __name__ == "__main__":
     test_cases = [
         "Hey, what can you do?",
-        "What's our current MRR?",
-        "Which plan has the highest churn rate?",
-        "Show me the schema for the customers table",
-        "Create a view for monthly MRR by plan",
+        "How many malls do we have by city?",
+        "Which malls have the most stores?",
+        "Show me the schema for the stores table",
+        "Create a view for store counts by mall",
     ]
     for idx, prompt in enumerate(test_cases, start=1):
         print(f"\n--- Dash test case {idx}/{len(test_cases)} ---")
