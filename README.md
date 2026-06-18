@@ -11,7 +11,7 @@ Chat with Dash via Slack, the terminal, or the [AgentOS](https://os.agno.com?utm
 git clone https://github.com/agno-agi/dash.git && cd dash
 
 cp example.env .env
-# Edit .env and add your OPENAI_API_KEY
+# Edit .env and add your OPENROUTER_API_KEY
 
 # Start the system
 docker compose up -d --build
@@ -42,7 +42,7 @@ Railway deployment uses `.env.production` to keep production credentials separat
 
 ```sh
 cp example.env .env.production
-# Edit .env.production — set OPENAI_API_KEY
+# Edit .env.production — set OPENROUTER_API_KEY
 ```
 
 ### Step 1: Deploy infrastructure
@@ -336,7 +336,29 @@ python -m app.main        # AgentOS mode (web UI at os.agno.com)
 
 | Variable | Required | Default | Purpose |
 |----------|----------|---------|---------|
-| `OPENAI_API_KEY` | Yes | — | OpenAI API key |
+| `OPENROUTER_API_KEY` | Yes | — | OpenRouter API key |
+| `OPENROUTER_MODEL_ID` | No | `openai/gpt-5.4` | OpenRouter chat/responses model |
+| `OPENROUTER_FALLBACK_MODEL_IDS` | No | `""` | Comma-separated fallback model IDs for OpenRouter model routing |
+| `OPENROUTER_EMBEDDING_MODEL_ID` | No | `openai/text-embedding-3-small` | OpenRouter embedding model |
+| `OPENROUTER_EMBEDDING_DIMENSIONS` | No | `1536` | Embedding vector dimensions |
+| `OPENROUTER_BASE_URL` | No | `https://openrouter.ai/api/v1` | OpenRouter OpenAI-compatible API base URL |
+| `OPENROUTER_HTTP_REFERER` | No | `""` | Optional OpenRouter attribution URL |
+| `OPENROUTER_APP_TITLE` | No | `""` | Optional OpenRouter attribution app title |
+| `OPENROUTER_PROVIDER_JSON` | No | `""` | Raw OpenRouter `provider` routing object as JSON |
+| `OPENROUTER_PROVIDER_BY_MODEL_JSON` | No | `""` | JSON map of model ID to provider routing overrides |
+| `OPENROUTER_PROVIDER_SORT` | No | `""` | Provider sort: `price`, `throughput`, `latency`, or JSON object with `by`/`partition` |
+| `OPENROUTER_PROVIDER_ONLY` | No | `""` | Comma-separated provider slugs to allow |
+| `OPENROUTER_PROVIDER_ORDER` | No | `""` | Comma-separated provider slugs to try first, in order |
+| `OPENROUTER_PROVIDER_IGNORE` | No | `""` | Comma-separated provider slugs to skip |
+| `OPENROUTER_PROVIDER_ALLOW_FALLBACKS` | No | `""` | Whether OpenRouter may use backup providers |
+| `OPENROUTER_PROVIDER_REQUIRE_PARAMETERS` | No | `""` | Require providers that support every request parameter |
+| `OPENROUTER_PROVIDER_DATA_COLLECTION` | No | `""` | `allow` or `deny` providers that may store data |
+| `OPENROUTER_PROVIDER_ZDR` | No | `""` | Restrict to Zero Data Retention endpoints |
+| `OPENROUTER_PROVIDER_ENFORCE_DISTILLABLE_TEXT` | No | `""` | Restrict to endpoints that allow text distillation |
+| `OPENROUTER_PROVIDER_QUANTIZATIONS` | No | `""` | Comma-separated quantization levels, such as `fp16,bf16` |
+| `OPENROUTER_PROVIDER_PREFERRED_MIN_THROUGHPUT` | No | `""` | Number or percentile JSON object, such as `{"p90":50}` |
+| `OPENROUTER_PROVIDER_PREFERRED_MAX_LATENCY` | No | `""` | Number or percentile JSON object, such as `{"p90":3}` |
+| `OPENROUTER_PROVIDER_MAX_PRICE` | No | `""` | JSON price cap, such as `{"prompt":1,"completion":2}` |
 | `SLACK_TOKEN` | No | `""` | Slack bot token (interface + tools) |
 | `SLACK_SIGNING_SECRET` | No | `""` | Slack signing secret (interface only) |
 | `DB_HOST` | No | `localhost` | PostgreSQL host |
@@ -348,6 +370,39 @@ python -m app.main        # AgentOS mode (web UI at os.agno.com)
 | `RUNTIME_ENV` | No | `prd` | `dev` enables hot reload |
 | `AGENTOS_URL` | No | `http://127.0.0.1:8000` | Scheduler callback URL (production) |
 | `JWT_VERIFICATION_KEY` | Production | — | RBAC public key from [os.agno.com](https://os.agno.com?utm_source=github&utm_medium=example-repo&utm_campaign=agent-example&utm_content=dash&utm_term=agentos) |
+
+### OpenRouter Provider Routing
+
+Dash sends OpenRouter-specific request fields through the OpenAI-compatible SDK `extra_body`, so they apply to the leader, specialists, eval judges, and the self-improvement loop.
+
+Common examples:
+
+```sh
+# Prefer the lowest-latency provider for the configured model.
+OPENROUTER_PROVIDER_SORT=latency
+
+# Use only a provider group.
+OPENROUTER_PROVIDER_ONLY=openai,azure
+
+# Pin provider order and disable fallback outside that order.
+OPENROUTER_PROVIDER_ORDER=openai,azure
+OPENROUTER_PROVIDER_ALLOW_FALLBACKS=false
+
+# Prefer providers meeting p90 performance thresholds.
+OPENROUTER_PROVIDER_SORT=price
+OPENROUTER_PROVIDER_PREFERRED_MIN_THROUGHPUT='{"p90":50}'
+OPENROUTER_PROVIDER_PREFERRED_MAX_LATENCY='{"p90":3}'
+```
+
+For model-specific groups, set `OPENROUTER_PROVIDER_BY_MODEL_JSON`. Exact model IDs override the global provider config; `default` or `*` can provide a fallback entry.
+
+```sh
+OPENROUTER_PROVIDER_BY_MODEL_JSON='{
+  "openai/gpt-5.4": {"only": ["openai"], "sort": "latency"},
+  "anthropic/claude-sonnet-4.5": {"only": ["anthropic"], "allow_fallbacks": false},
+  "default": {"sort": "throughput"}
+}'
+```
 
 ## Security
 

@@ -8,8 +8,8 @@ so all agents share the same resources.
 from os import getenv
 
 from agno.learn import LearnedKnowledgeConfig, LearningMachine, LearningMode
-from agno.models.openai import OpenAIResponses
 
+from dash.model_config import build_openrouter_model
 from db import create_knowledge, get_postgres_db
 
 # Database
@@ -17,7 +17,7 @@ agent_db = get_postgres_db()
 
 # Model — full object, not just ID.
 # Change class + ID together when switching providers.
-MODEL = OpenAIResponses(id="gpt-5.4")
+MODEL = build_openrouter_model()
 
 # Slack
 SLACK_TOKEN = getenv("SLACK_TOKEN", "")

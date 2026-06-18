@@ -17,6 +17,11 @@ from agno.knowledge.embedder.openai import OpenAIEmbedder
 from agno.vectordb.pgvector import PgVector, SearchType
 from sqlalchemy import Engine, create_engine, event, text
 
+from dash.model_config import (
+    OPENROUTER_EMBEDDING_DIMENSIONS,
+    OPENROUTER_EMBEDDING_MODEL_ID,
+    openrouter_embedder_kwargs,
+)
 from db.url import db_url
 
 DB_ID = "dash-db"
@@ -139,7 +144,11 @@ def create_knowledge(name: str, table_name: str) -> Knowledge:
             db_url=db_url,
             table_name=table_name,
             search_type=SearchType.hybrid,
-            embedder=OpenAIEmbedder(id="text-embedding-3-small"),
+            embedder=OpenAIEmbedder(
+                id=OPENROUTER_EMBEDDING_MODEL_ID,
+                dimensions=OPENROUTER_EMBEDDING_DIMENSIONS,
+                **openrouter_embedder_kwargs(required_api_key=True),
+            ),
         ),
         contents_db=get_postgres_db(contents_table=f"{table_name}_contents"),
     )

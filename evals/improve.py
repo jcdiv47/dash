@@ -2,7 +2,7 @@
 Dash Self-Improvement Loop
 ==========================
 
-Runs smoke tests, analyzes failures with GPT-5.4, applies targeted
+Runs smoke tests, analyzes failures with the configured OpenRouter model, applies targeted
 improvements to instructions and knowledge, then re-runs to verify.
 
 Usage:
@@ -19,7 +19,9 @@ import shutil
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
+from dash.model_config import OPENROUTER_MODEL_ID, openrouter_client_kwargs, openrouter_extra_body
 from dash.paths import BUSINESS_DIR, DASH_DIR, QUERIES_DIR
 
 # ---------------------------------------------------------------------------
@@ -162,22 +164,28 @@ def get_improvement_plan(
     metrics_content: str,
     queries_content: str,
 ) -> ImprovementPlan:
-    """Call GPT-5.4 to analyze failures and suggest improvements."""
+    """Call the configured OpenRouter model to analyze failures and suggest improvements."""
     from openai import OpenAI
 
-    client = OpenAI()
+    client = OpenAI(**openrouter_client_kwargs(required_api_key=True))
 
     prompt = _build_analysis_prompt(results, instructions_content, metrics_content, queries_content)
 
-    response = client.chat.completions.create(
-        model="gpt-5.4",
-        messages=[
+    request: dict[str, Any] = {
+        "model": OPENROUTER_MODEL_ID,
+        "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ],
-        response_format={"type": "json_object"},
-        temperature=0.3,
-    )
+        "response_format": {"type": "json_object"},
+        "temperature": 0.3,
+    }
+
+    extra_body = openrouter_extra_body(model_id=OPENROUTER_MODEL_ID)
+    if extra_body:
+        request["extra_body"] = extra_body
+
+    response = client.chat.completions.create(**request)
 
     raw = json.loads(response.choices[0].message.content or "{}")
 
